@@ -17,7 +17,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin imagemagick fontconfig
 
-      # Updated path to use fonts/ directory instead of assets/fonts/
+      # Use correct path assets/fonts/
       - name: Install custom font system-wide
         run: |
           sudo mkdir -p /usr/share/fonts/truetype/custom
@@ -26,8 +26,8 @@ jobs:
           sudo fc-cache -f -v                 # rebuild cache
           
           # Create a symlink to ensure the font is found with the exact name
-          sudo ln -sf /usr/share/fonts/truetype/custom/SF-Pro-Display-Semibold.otf /usr/share/fonts/truetype/custom/SF\ Pro\ Display\ Semibold.otf
-          sudo ln -sf /usr/share/fonts/truetype/custom/SF-Pro-Display-Regular.otf /usr/share/fonts/truetype/custom/SF\ Pro\ Display.otf
+          sudo ln -sf /usr/share/fonts/truetype/custom/SF-Pro-Display-Semibold.otf /usr/share/fonts/truetype/custom/SF\ Pro\ Display\ Semibold.otf 2>/dev/null || true
+          sudo ln -sf /usr/share/fonts/truetype/custom/SF-Pro-Display-Regular.otf /usr/share/fonts/truetype/custom/SF\ Pro\ Display.otf 2>/dev/null || true
 
       - name: Debug – confirm font is visible
         run: |
