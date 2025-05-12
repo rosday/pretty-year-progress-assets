@@ -1,5 +1,5 @@
 <svg width="1080" height="1350" viewBox="0 0 1080 1350" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1080" height="1350" fill="#000000"/> 
+  <rect width="1080" height="1350" fill="#000000"/>
   <text x="105" y="220" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="124" fill="#FFE074">Year 2025</text>
   <text x="105" y="360" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="124" fill="#FFE074" opacity="0.5">36%</text>
   <circle opacity="0.12" cx="750.5" cy="1000.5" r="186.692" stroke="white" stroke-width="85.6166"/>
