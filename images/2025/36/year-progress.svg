@@ -1,4 +1,12 @@
 <svg width="1080" height="1350" viewBox="0 0 1080 1350" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+      @font-face {
+          font-family: 'SF Pro Display';
+          src: url('./assets/fonts/SF-Pro-Display-Semibold.otf') format('opentype');
+          font-weight: 600;
+          font-style: normal;
+      }
+  </style>
   <rect width="1080" height="1350" fill="#222222"/> 
   <text x="105" y="220" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="124" fill="#AFFF33">Year 2025</text>
   <text x="105" y="360" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="600" font-size="124" fill="#AFFF33" opacity="0.5">36%</text>
