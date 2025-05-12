@@ -2,61 +2,55 @@ name: Convert SVG to PNG
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - '**/*.svg'
+    branches: [main]
+    paths: ['**/*.svg']
 
 jobs:
   convert-svg-to-png:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      
-      - name: Install dependencies
+      - uses: actions/checkout@v3
+        with: { fetch-depth: 0 }
+
+      - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin imagemagick fontconfig
 
-      - name: Install custom fonts
+      # ⬇️  assume your TTF / OTF files live under assets/fonts/
+      - name: Install custom font system-wide
         run: |
-          mkdir -p "$HOME/.local/share/fonts"
-          cp -v assets/fonts/*.ttf "$HOME/.local/share/fonts/" 2>/dev/null || true
-          cp -v assets/fonts/*.otf "$HOME/.local/share/fonts/" 2>/dev/null || true
-          fc-cache -f -v
-      
+          sudo mkdir -p /usr/share/fonts/truetype/custom
+          sudo cp -v assets/fonts/*.ttf /usr/share/fonts/truetype/custom/ 2>/dev/null || true
+          sudo cp -v assets/fonts/*.otf /usr/share/fonts/truetype/custom/ 2>/dev/null || true
+          sudo fc-cache -f -v                 # rebuild cache
+
+      - name: Debug – confirm font is visible
+        run: |
+          fc-list | head -n 20                # show a few fonts
+          fc-list | grep -i 'MyFont' || true  # replace MyFont with the family you need
+
       - name: Find changed SVG files
-        id: changed-files
+        id: changed
         run: |
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep '\.svg$' || echo "")
-          echo "Changed SVG files: $CHANGED_FILES"
-          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
-      
-      - name: Convert SVG to PNG
-        if: steps.changed-files.outputs.files != ''
+          files=$(git diff --name-only HEAD^ HEAD | grep '\.svg$' || true)
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+
+      - name: Convert SVG → PNG
+        if: steps.changed.outputs.files != ''
         run: |
-          for file in ${{ steps.changed-files.outputs.files }}; do
-            echo "Converting $file to PNG"
-            # Create output path by replacing .svg with .png
-            output_file="${file%.svg}.png"
-            
-            # First convert SVG to PNG using rsvg-convert
-            rsvg-convert -w 1080 -h 1350 "$file" -o "$output_file"
-            
-            # Optimize the PNG
-            convert "$output_file" -strip -quality 95 "$output_file"
-            
-            echo "Created $output_file"
+          for f in ${{ steps.changed.outputs.files }}; do
+            png="${f%.svg}.png"
+            echo "Converting $f ⇒ $png"
+            rsvg-convert -w 1080 -h 1350 "$f" -o "$png"
+            convert "$png" -strip -quality 95 "$png"
           done
-      
-      - name: Commit and push PNG files
-        if: steps.changed-files.outputs.files != ''
+
+      - name: Commit and push PNGs
+        if: steps.changed.outputs.files != ''
         run: |
           git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.name  "GitHub Action"
           git add "**/*.png"
-          git commit -m "Add PNG versions of SVG files" || echo "No changes to commit"
-          git push 
+          git commit -m "Add PNG versions of SVG files" || echo "No PNG changes"
+          git push
