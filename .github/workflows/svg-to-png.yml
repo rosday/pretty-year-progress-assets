@@ -15,93 +15,22 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y librsvg2-bin imagemagick fontconfig xvfb libfontconfig1 libfreetype6
-          # Disable ImageMagick security policy that might interfere with font rendering
-          sudo sed -i 's/rights="none" pattern="PS"/rights="read|write" pattern="PS"/' /etc/ImageMagick-6/policy.xml || true
-          sudo sed -i 's/rights="none" pattern="EPS"/rights="read|write" pattern="EPS"/' /etc/ImageMagick-6/policy.xml || true
-          sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true
-          sudo sed -i 's/rights="none" pattern="XPS"/rights="read|write" pattern="XPS"/' /etc/ImageMagick-6/policy.xml || true
-
-      # More robust font installation
-      - name: Install SF Pro Display font
-        run: |
-          # Create font directories
-          sudo mkdir -p /usr/share/fonts/truetype/sf-pro
-          sudo mkdir -p /usr/share/fonts/opentype/sf-pro
-          sudo mkdir -p /usr/local/share/fonts
-          sudo mkdir -p ~/.fonts
-          
-          # Copy fonts to multiple locations to ensure they're found
-          sudo cp -v assets/fonts/*.ttf /usr/share/fonts/truetype/sf-pro/ 2>/dev/null || true
-          sudo cp -v assets/fonts/*.otf /usr/share/fonts/opentype/sf-pro/ 2>/dev/null || true
-          sudo cp -v assets/fonts/*.ttf /usr/local/share/fonts/ 2>/dev/null || true
-          sudo cp -v assets/fonts/*.otf /usr/local/share/fonts/ 2>/dev/null || true
-          cp -v assets/fonts/*.ttf ~/.fonts/ 2>/dev/null || true
-          cp -v assets/fonts/*.otf ~/.fonts/ 2>/dev/null || true
-          
-          # Create symlinks with different naming conventions
-          for font in /usr/share/fonts/opentype/sf-pro/*.otf; do
-            # Create symlinks with spaces in the name
-            base=$(basename "$font")
-            name_with_spaces=$(echo "$base" | sed 's/-/ /g' | sed 's/\.otf$//')
-            sudo ln -sf "$font" "/usr/local/share/fonts/$name_with_spaces.otf" 2>/dev/null || true
-          done
-          
-          # Ensure SF Pro Display symlinks exist
-          sudo ln -sf /usr/share/fonts/opentype/sf-pro/SF-Pro-Display-Semibold.otf "/usr/local/share/fonts/SF Pro Display Semibold.otf" 2>/dev/null || true
-          sudo ln -sf /usr/share/fonts/opentype/sf-pro/SF-Pro-Display-Regular.otf "/usr/local/share/fonts/SF Pro Display.otf" 2>/dev/null || true
-          
-          # Rebuild font cache in multiple ways
-          sudo fc-cache -f -v
-          sudo mkfontscale /usr/share/fonts/opentype/sf-pro || true
-          sudo mkfontdir /usr/share/fonts/opentype/sf-pro || true
-          sudo mkfontscale /usr/local/share/fonts || true
-          sudo mkfontdir /usr/local/share/fonts || true
-
-      - name: Extensive font debugging
-        run: |
-          echo "=== Font directories ==="
-          ls -la /usr/share/fonts/opentype/sf-pro/
-          ls -la /usr/local/share/fonts/
-          
-          echo "=== FC-List output ==="
-          fc-list | grep -i "SF Pro" || echo "SF Pro not found in fc-list"
-          fc-list | grep -i "SF-Pro" || echo "SF-Pro not found in fc-list"
-          
-          echo "=== Font configuration ==="
-          fc-match "SF Pro Display"
-          fc-match "SF Pro Display Semibold"
-          
-          echo "=== Font cache info ==="
-          fc-cache -v
+          sudo apt-get install -y librsvg2-bin imagemagick
 
       - name: Find changed SVG files
         id: changed
         run: |
           files=$(git diff --name-only HEAD^ HEAD | grep '\.svg$' || true)
           echo "files=$files" >> "$GITHUB_OUTPUT"
-          
-          # Debug - print content of first changed SVG
-          if [ -n "$files" ]; then
-            first_file=$(echo "$files" | head -n 1)
-            echo "First changed SVG file: $first_file"
-            echo "SVG content:"
-            cat "$first_file" | grep -i "font"
-          fi
 
-      # Fall back to simpler conversion since the headless Chrome approach is failing
-      - name: Convert SVG → PNG using rsvg-convert
+      - name: Convert SVG → PNG
         if: steps.changed.outputs.files != ''
         run: |
           for f in ${{ steps.changed.outputs.files }}; do
             png="${f%.svg}.png"
-            echo "Converting $f ⇒ $png using rsvg-convert"
-            
-            # Use rsvg-convert with additional parameters to ensure font rendering
-            rsvg-convert -f png -w 1080 -h 1350 --keep-aspect-ratio --dpi-x 300 --dpi-y 300 "$f" -o "$png"
-            
-            # Optimize the PNG but maintain quality
-            convert "$png" -strip -quality 100 "$png"
+            echo "Converting $f ⇒ $png"
+            rsvg-convert -w 1080 -h 1350 "$f" -o "$png"
+            convert "$png" -strip -quality 95 "$png"
           done
 
       - name: Commit and push PNGs
