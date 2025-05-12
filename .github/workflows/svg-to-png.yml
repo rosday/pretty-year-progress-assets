@@ -1,3 +1,4 @@
+# .github/workflows/convert-svg-to-png.yml
 name: Convert SVG to PNG
 
 on:
@@ -8,49 +9,69 @@ on:
 jobs:
   convert-svg-to-png:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with: { fetch-depth: 0 }
 
-      - name: Install tools
+    steps:
+      # 1 — checkout
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      # 2 — tools
+      - name: Install raster-tools
         run: |
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin imagemagick fontconfig
 
-      # ⬇️  assume your TTF / OTF files live under assets/fonts/
-      - name: Install custom font system-wide
+      # 3 — install custom fonts (TTF → truetype, OTF → opentype)
+      - name: Install SF Pro system-wide
         run: |
-          sudo mkdir -p /usr/share/fonts/truetype/custom
-          sudo cp -v assets/fonts/*.ttf /usr/share/fonts/truetype/custom/ 2>/dev/null || true
-          sudo cp -v assets/fonts/*.otf /usr/share/fonts/truetype/custom/ 2>/dev/null || true
-          sudo fc-cache -f -v                 # rebuild cache
+          set -eux
+          sudo mkdir -p /usr/share/fonts/truetype/custom /usr/share/fonts/opentype/custom
+          # copy fonts
+          for f in assets/fonts/*; do
+            case "${f##*.}" in
+              ttf) sudo cp -v "$f" /usr/share/fonts/truetype/custom/ ;;
+              otf) sudo cp -v "$f" /usr/share/fonts/opentype/custom/ ;;
+              *)   echo "Skip $f (not ttf/otf)" ;;
+            esac
+          done
+          sudo chmod 644 /usr/share/fonts/truetype/custom/* /usr/share/fonts/opentype/custom/* || true
+          sudo fc-cache -f -v
 
-      - name: Debug – confirm font is visible
+      # 4 — debug font presence
+      - name: Verify font install
         run: |
-          fc-list | head -n 20                # show a few fonts
-          fc-list | grep -i 'SF Pro Display' || true  # replace MyFont with the family you need
+          echo "Expecting SF Pro Display in list ↓"
+          if fc-list | grep -qi 'SF Pro Display'; then
+            fc-list | grep -i 'SF Pro Display' | head
+          else
+            echo "SF Pro not found; PNGs will use fallback font" && exit 1
+          fi
 
+      # 5 — detect changed SVGs
       - name: Find changed SVG files
         id: changed
         run: |
-          files=$(git diff --name-only HEAD^ HEAD | grep '\.svg$' || true)
-          echo "files=$files" >> "$GITHUB_OUTPUT"
+          echo "files=$(git diff --name-only HEAD^ HEAD | grep '\.svg$' || true)" >>"$GITHUB_OUTPUT"
 
-      - name: Convert SVG → PNG
+      # 6 — convert SVG → PNG
+      - name: Convert SVGs
         if: steps.changed.outputs.files != ''
         run: |
+          set -eux
           for f in ${{ steps.changed.outputs.files }}; do
             png="${f%.svg}.png"
-            echo "Converting $f ⇒ $png"
+            echo "→ $png"
             rsvg-convert -w 1080 -h 1350 "$f" -o "$png"
             convert "$png" -strip -quality 95 "$png"
           done
 
-      - name: Commit and push PNGs
+      # 7 — commit PNGs
+      - name: Commit & push
         if: steps.changed.outputs.files != ''
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name  "GitHub Action"
           git add "**/*.png"
-          git commit -m "Add PNG versions of SVG files" || echo "No PNG changes"
+          git commit -m "Add PNG versions of SVG files" || echo "No new PNGs"
           git push
