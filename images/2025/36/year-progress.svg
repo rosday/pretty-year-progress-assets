@@ -1,7 +1,7 @@
 
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
   <rect width="1080" height="1350" fill="#FDBE83"/>
-  
+   
   <!-- Circle with progress -->
   <circle cx="540" cy="700" r="300" fill="none" stroke="#805630" stroke-width="60" stroke-opacity="0.12" stroke-dasharray="1884" stroke-dashoffset="1205.76" />
   
