@@ -28,7 +28,7 @@ jobs:
       - name: Debug – confirm font is visible
         run: |
           fc-list | head -n 20                # show a few fonts
-          fc-list | grep -i 'MyFont' || true  # replace MyFont with the family you need
+          fc-list | grep -i 'SF Pro Display' || true  # replace MyFont with the family you need
 
       - name: Find changed SVG files
         id: changed
