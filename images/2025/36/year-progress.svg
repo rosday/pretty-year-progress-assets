@@ -4,11 +4,13 @@
   
   <!-- Background circle with opacity -->
   <circle opacity="0.12" cx="750.5" cy="1000.5" r="186.692" 
+    fill="none"
     stroke="#87CEEB" 
     stroke-width="85.6166"/>
   
   <!-- Progress arc -->
   <path d="M750.5 813.808 A186.692 186.692 0 0 1 936.8236059837309 988.7775123280334" 
+    fill="none"
     stroke="#87CEEB" 
     stroke-width="85.6166" 
     stroke-linecap="round" 
