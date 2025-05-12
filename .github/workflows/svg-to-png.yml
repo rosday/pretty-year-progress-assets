@@ -1,0 +1,55 @@
+name: Convert SVG to PNG
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/*.svg'
+
+jobs:
+  convert-svg-to-png:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin imagemagick
+      
+      - name: Find changed SVG files
+        id: changed-files
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep '\.svg$' || echo "")
+          echo "Changed SVG files: $CHANGED_FILES"
+          echo "files=$CHANGED_FILES" >> $GITHUB_OUTPUT
+      
+      - name: Convert SVG to PNG
+        if: steps.changed-files.outputs.files != ''
+        run: |
+          for file in ${{ steps.changed-files.outputs.files }}; do
+            echo "Converting $file to PNG"
+            # Create output path by replacing .svg with .png
+            output_file="${file%.svg}.png"
+            
+            # First convert SVG to PNG using rsvg-convert
+            rsvg-convert -w 1080 -h 1350 "$file" -o "$output_file"
+            
+            # Optimize the PNG
+            convert "$output_file" -strip -quality 95 "$output_file"
+            
+            echo "Created $output_file"
+          done
+      
+      - name: Commit and push PNG files
+        if: steps.changed-files.outputs.files != ''
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add "**/*.png"
+          git commit -m "Add PNG versions of SVG files" || echo "No changes to commit"
+          git push 
