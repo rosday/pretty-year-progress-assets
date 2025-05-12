@@ -17,10 +17,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y librsvg2-bin imagemagick fontconfig xvfb libfontconfig1 libfreetype6
           # Disable ImageMagick security policy that might interfere with font rendering
-          sudo sed -i 's/rights="none" pattern="PS"/rights="read|write" pattern="PS"/' /etc/ImageMagick-6/policy.xml
-          sudo sed -i 's/rights="none" pattern="EPS"/rights="read|write" pattern="EPS"/' /etc/ImageMagick-6/policy.xml
-          sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml
-          sudo sed -i 's/rights="none" pattern="XPS"/rights="read|write" pattern="XPS"/' /etc/ImageMagick-6/policy.xml
+          sudo sed -i 's/rights="none" pattern="PS"/rights="read|write" pattern="PS"/' /etc/ImageMagick-6/policy.xml || true
+          sudo sed -i 's/rights="none" pattern="EPS"/rights="read|write" pattern="EPS"/' /etc/ImageMagick-6/policy.xml || true
+          sudo sed -i 's/rights="none" pattern="PDF"/rights="read|write" pattern="PDF"/' /etc/ImageMagick-6/policy.xml || true
+          sudo sed -i 's/rights="none" pattern="XPS"/rights="read|write" pattern="XPS"/' /etc/ImageMagick-6/policy.xml || true
 
       # More robust font installation
       - name: Install SF Pro Display font
@@ -53,10 +53,10 @@ jobs:
           
           # Rebuild font cache in multiple ways
           sudo fc-cache -f -v
-          sudo mkfontscale /usr/share/fonts/opentype/sf-pro
-          sudo mkfontdir /usr/share/fonts/opentype/sf-pro
-          sudo mkfontscale /usr/local/share/fonts
-          sudo mkfontdir /usr/local/share/fonts
+          sudo mkfontscale /usr/share/fonts/opentype/sf-pro || true
+          sudo mkfontdir /usr/share/fonts/opentype/sf-pro || true
+          sudo mkfontscale /usr/local/share/fonts || true
+          sudo mkfontdir /usr/local/share/fonts || true
 
       - name: Extensive font debugging
         run: |
@@ -89,110 +89,19 @@ jobs:
             cat "$first_file" | grep -i "font"
           fi
 
-      - name: Convert SVG → PNG using Chrome headless
+      # Fall back to simpler conversion since the headless Chrome approach is failing
+      - name: Convert SVG → PNG using rsvg-convert
         if: steps.changed.outputs.files != ''
         run: |
-          # Install Node.js and puppeteer for better font rendering
-          sudo apt-get install -y nodejs npm
-          sudo npm install -g puppeteer-core puppeteer
-          
-          # Create a simple Node.js script for SVG to PNG conversion
-          cat > convert.js << 'EOF'
-          const puppeteer = require('puppeteer');
-          const fs = require('fs');
-          const path = require('path');
-
-          async function convertSvgToPng(svgPath, pngPath) {
-            const browser = await puppeteer.launch({
-              headless: 'new',
-              args: ['--no-sandbox', '--font-render-hinting=none']
-            });
-            const page = await browser.newPage();
-            
-            // Read SVG content
-            const svgContent = fs.readFileSync(svgPath, 'utf8');
-            
-            // Create HTML with embedded SVG
-            const html = `
-              <!DOCTYPE html>
-              <html>
-                <head>
-                  <style>
-                    @font-face {
-                      font-family: 'SF Pro Display';
-                      src: local('SF Pro Display');
-                    }
-                    body {
-                      margin: 0;
-                      padding: 0;
-                    }
-                    svg {
-                      width: 1080px;
-                      height: 1350px;
-                    }
-                  </style>
-                </head>
-                <body>
-                  ${svgContent}
-                </body>
-              </html>
-            `;
-            
-            await page.setContent(html);
-            await page.setViewport({ width: 1080, height: 1350 });
-            
-            // Wait for fonts to load
-            await page.waitForTimeout(1000);
-            
-            // Take screenshot
-            await page.screenshot({
-              path: pngPath,
-              fullPage: true,
-              omitBackground: false,
-              quality: 100
-            });
-            
-            await browser.close();
-            console.log(`Converted ${svgPath} to ${pngPath}`);
-          }
-
-          // Get command line arguments
-          const svgPath = process.argv[2];
-          const pngPath = process.argv[3];
-          
-          if (!svgPath || !pngPath) {
-            console.error('Usage: node convert.js <svg-path> <png-path>');
-            process.exit(1);
-          }
-          
-          convertSvgToPng(svgPath, pngPath).catch(console.error);
-          EOF
-          
-          # Use the script to convert SVGs to PNGs
           for f in ${{ steps.changed.outputs.files }}; do
             png="${f%.svg}.png"
-            echo "Converting $f ⇒ $png using Chrome headless"
-            node convert.js "$f" "$png"
-          done
-
-      - name: Alternative conversion using rsvg-convert as backup
-        if: steps.changed.outputs.files != ''
-        run: |
-          echo "Attempting alternative conversion with rsvg-convert as backup"
-          for f in ${{ steps.changed.outputs.files }}; do
-            png="${f%.svg}.backup.png"
             echo "Converting $f ⇒ $png using rsvg-convert"
+            
+            # Use rsvg-convert with additional parameters to ensure font rendering
             rsvg-convert -f png -w 1080 -h 1350 --keep-aspect-ratio --dpi-x 300 --dpi-y 300 "$f" -o "$png"
             
-            # Check if primary conversion succeeded
-            main_png="${f%.svg}.png"
-            if [ ! -f "$main_png" ] || [ ! -s "$main_png" ]; then
-              echo "Primary conversion failed, using backup for $f"
-              mv "$png" "$main_png"
-            else
-              echo "Primary conversion succeeded for $f, removing backup"
-              rm "$png"
-            fi
+            # Optimize the PNG but maintain quality
+            convert "$png" -strip -quality 100 "$png"
           done
 
       - name: Commit and push PNGs
