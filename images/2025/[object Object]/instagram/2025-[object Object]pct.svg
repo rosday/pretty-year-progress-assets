@@ -1,0 +1,21 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1350" width="1080" height="1350">
+  <rect width="1080" height="1350" fill="#B0C4DE"/>
+  
+  <!-- Background circle with opacity -->
+  <circle opacity="0.12" cx="750.5" cy="1000.5" r="186.692" 
+    fill="none"
+    stroke="#000000" 
+    stroke-width="85.6166"/>
+  
+  <!-- Progress arc -->
+  <path d="M750.5 813.808 A186.692 186.692 0 0 1 NaN NaN" 
+    fill="none"
+    stroke="#111111" 
+    stroke-width="85.6166" 
+    stroke-linecap="round" 
+    stroke-linejoin="round"/>
+  
+  <text x="105" y="220" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="124" fill="#111111">2025</text>
+    <text x="105" y="360" font-family="SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif" font-weight="700" font-size="124" fill="#111111" opacity="0.5">[object Object]%</text>
+</svg>
