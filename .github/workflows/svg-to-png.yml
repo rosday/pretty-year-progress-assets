@@ -9,7 +9,7 @@ jobs:
   convert-svg-to-png:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
 
       - name: Install tools
@@ -20,7 +20,10 @@ jobs:
       - name: Find changed SVG files
         id: changed
         run: |
-          files=$(git diff --name-only HEAD^ HEAD | grep '\.svg$' || true)
+          set -euo pipefail
+          before="${{ github.event.before }}"
+          after="${{ github.sha }}"
+          files=$(git diff --name-only "$before" "$after" -- '*.svg' | tr '\n' ' ')
           echo "files=$files" >> "$GITHUB_OUTPUT"
 
       - name: Convert SVG → PNG
@@ -41,3 +44,27 @@ jobs:
           git add "**/*.png"
           git commit -m "Add PNG versions of SVG files" || echo "No PNG changes"
           git push
+
+      - name: Wait for raw.githubusercontent.com to serve PNGs
+        if: steps.changed.outputs.files != ''
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          branch="${GITHUB_REF_NAME}"
+          for svg in ${{ steps.changed.outputs.files }}; do
+            png="${svg%.svg}.png"
+            url="https://raw.githubusercontent.com/${repo}/${branch}/${png}"
+            echo "Checking availability for ${url}"
+            for i in {1..20}; do
+              if curl -fsI "$url" >/dev/null; then
+                echo "Available: ${url}"
+                break
+              fi
+              if [ "$i" -eq 20 ]; then
+                echo "Timed out waiting for ${url}"
+                exit 1
+              fi
+              echo "Not ready yet (${i}/20), sleeping..."
+              sleep 6
+            done
+          done
